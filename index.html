@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Events & Affairs Calendar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f8f6fc; --surface:#fff; --text:#1f1f1f; --muted:#5f6368; --line:#dadce0;
+  --accent:#512887; --accent-bg:#E9E1F5; --on:#fff; --title:#512887; --hover:#f3effa; --other:#9aa0a6;
+  --urgent:#d93025; --semi:#f09300; --not:#1a73e8; --none:#7f8691; --done:#188038;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#131314; --surface:#1e1f20; --text:#e3e3e3; --muted:#a8abb0; --line:#3c4043;
+    --accent:#CBB8F0; --accent-bg:#3A2372; --on:#1E0A49; --title:#E3D9F7; --hover:#2b2c2e; --other:#6f7378;
+    --urgent:#f28b82; --semi:#fdc269; --not:#8ab4f8; --none:#9aa0a6; --done:#81c995;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#131314; --surface:#1e1f20; --text:#e3e3e3; --muted:#a8abb0; --line:#3c4043;
+  --accent:#CBB8F0; --accent-bg:#3A2372; --on:#1E0A49; --title:#E3D9F7; --hover:#2b2c2e; --other:#6f7378;
+  --urgent:#f28b82; --semi:#fdc269; --not:#8ab4f8; --none:#9aa0a6; --done:#81c995;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font-family:Roboto,"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;display:flex;flex-direction:column;overflow:hidden}
+button{font:inherit;color:inherit;cursor:pointer}
+
+/* top bar */
+header{display:flex;align-items:center;gap:12px;padding:8px 16px;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:10px;min-width:200px}
+.logo .tile{width:36px;height:36px;border-radius:6px;background:var(--accent);color:var(--on);display:grid;place-items:center;font-weight:500;font-size:16px}
+.logo span{font-size:22px;color:var(--title);font-weight:500}
+.pill{border:1px solid var(--line);background:transparent;border-radius:20px;padding:9px 20px;font-weight:500}
+.pill:hover{background:var(--hover)}
+.icon{border:0;background:transparent;width:36px;height:36px;border-radius:50%;font-size:18px;color:var(--muted)}
+.icon:hover{background:var(--hover)}
+#title{font-size:22px;margin:0 8px;white-space:nowrap}
+.spacer{flex:1}
+#search{border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:20px;padding:8px 14px;width:200px;font:inherit}
+.seg{display:flex;border:1px solid var(--line);border-radius:20px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:8px 16px}
+.seg button.on{background:var(--accent-bg);color:var(--accent);font-weight:500}
+#status{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+#status i{width:8px;height:8px;border-radius:50%;background:var(--done);display:inline-block}
+#status.err i{background:var(--urgent)}
+
+/* body */
+.wrap{flex:1;display:flex;min-height:0;padding:0 12px 12px 0}
+aside{width:256px;padding:8px 16px;overflow:auto;flex-shrink:0}
+aside h4{font-size:14px;font-weight:500;margin:20px 0 6px;display:flex;justify-content:space-between}
+.mini-head{display:flex;justify-content:space-between;align-items:center;font-weight:500;margin-top:8px}
+.mini{display:grid;grid-template-columns:repeat(7,1fr);gap:0;text-align:center;font-size:11px;margin-top:6px}
+.mini .dow{color:var(--muted);padding:4px 0}
+.mini .d{position:relative;height:28px;width:28px;margin:auto;border-radius:50%;display:grid;place-items:center;cursor:pointer;border:0;background:transparent}
+.mini .d:hover{background:var(--hover)}
+.mini .d.other{color:var(--other)}
+.mini .d.today{background:var(--accent);color:var(--on)}
+.mini .d.sel{background:var(--accent-bg);color:var(--accent)}
+.mini .d.has::after{content:"";position:absolute;bottom:2px;width:4px;height:4px;border-radius:50%;background:var(--accent)}
+.mini .d.today.has::after{background:var(--on)}
+.filter{display:flex;align-items:center;gap:10px;padding:6px 4px;cursor:pointer;user-select:none;border-radius:6px}
+.filter:hover{background:var(--hover)}
+.filter input{appearance:none;width:18px;height:18px;border-radius:3px;border:2px solid var(--bd);margin:0;display:grid;place-items:center;cursor:pointer}
+.filter input:checked{background:var(--c)}
+.filter input:checked::after{content:"✓";color:var(--fg);font-size:12px;line-height:1}
+.count{margin-left:auto;color:var(--muted);font-size:12px}
+
+main{flex:1;min-width:0;background:var(--surface);border-radius:16px;display:flex;flex-direction:column;overflow:hidden}
+
+/* month */
+.dows{display:grid;grid-template-columns:36px repeat(7,1fr);border-bottom:1px solid var(--line)}
+.dows div{text-align:center;font-size:11px;font-weight:500;color:var(--muted);padding:8px 0}
+.weeks{flex:1;display:grid;min-height:0;overflow:auto;align-content:stretch}
+.week{display:grid;grid-template-columns:36px repeat(7,1fr);min-height:0;border-bottom:1px solid var(--line)}
+.wk{font-size:11px;color:var(--muted);padding:8px 0 0;text-align:center}
+.cell{border-left:1px solid var(--line);padding:4px 2px;min-width:0;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.cell:hover{background:var(--hover)}
+.num{align-self:center;height:24px;min-width:24px;padding:0 6px;border-radius:12px;display:grid;place-items:center;font-size:12px;font-weight:500;margin-bottom:2px}
+.cell.other .num{color:var(--other)}
+.cell.today .num{background:var(--accent);color:var(--on)}
+.chip{box-shadow:inset 0 0 0 1px var(--bd);display:flex;align-items:center;gap:5px;min-height:20px;border-radius:5px;padding:0 6px;font-size:12px;overflow:hidden;cursor:pointer;border:0;text-align:left;width:100%;background:transparent}
+.chip .t{overflow:hidden;text-overflow:ellipsis;white-space:normal;line-height:1.25;padding:2px 0}
+.chip{background:var(--c);color:var(--fg)}
+.chip .t{font-weight:inherit}
+.chip.dot::before{display:none}
+.chip:hover{filter:brightness(.96)}
+.chip.plain{box-shadow:none}
+.chip.plain:hover{filter:none;background:var(--hover)}
+.chip.bold .t{font-weight:500}
+.chip.done .t{text-decoration:line-through;opacity:.8}
+.chip.block.done{opacity:.8}
+.chip .tm{color:inherit;font-weight:500;flex-shrink:0}
+.chip.block .tm{color:inherit;opacity:.85}
+.more{font-size:12px;font-weight:500;color:var(--muted);padding:0 6px;text-align:left;border:0;background:transparent;height:18px}
+.more:hover{color:var(--text)}
+
+/* agenda */
+.agenda{flex:1;overflow:auto;padding:8px 24px}
+.ag-day{display:flex;gap:24px;padding:12px 0;border-bottom:1px solid var(--line)}
+.ag-date{width:90px;flex-shrink:0;display:flex;align-items:center;gap:10px}
+.ag-date b{font-size:22px;font-weight:400;height:40px;min-width:40px;border-radius:20px;display:grid;place-items:center}
+.ag-date.today b{background:var(--accent);color:var(--on)}
+.ag-date small{color:var(--muted);font-size:11px;line-height:1.3;text-transform:uppercase}
+.ag-items{flex:1;display:flex;flex-direction:column;gap:2px}
+.ag-row{display:flex;gap:14px;align-items:center;padding:8px 10px;border-radius:8px;cursor:pointer;border:0;background:transparent;text-align:left;width:100%}
+.ag-row:hover{background:var(--hover)}
+.ag-row .dotc{width:12px;height:12px;border-radius:50%;background:var(--c);box-shadow:inset 0 0 0 1.5px var(--bd);flex-shrink:0}
+.ag-row .tm{width:110px;color:var(--muted);flex-shrink:0}
+.ag-row .ttl{flex:1;font-weight:500}
+.ag-row.done .ttl{text-decoration:line-through;opacity:.65}
+.ag-row .sub{color:var(--muted);font-size:12px}
+.empty{padding:48px;text-align:center;color:var(--muted)}
+
+/* popover */
+#scrim{position:fixed;inset:0;display:none;background:rgba(0,0,0,.25);z-index:20;align-items:center;justify-content:center;padding:16px}
+#scrim.on{display:flex}
+.card{background:var(--surface);border-radius:14px;width:min(420px,100%);max-height:90vh;overflow:auto;box-shadow:0 8px 28px rgba(0,0,0,.3);padding:18px 20px}
+.card .bar{display:flex;justify-content:flex-end}
+.card h2{margin:4px 0 2px;font-size:20px;font-weight:400;display:flex;gap:12px;align-items:flex-start}
+.card h2 i{width:14px;height:14px;border-radius:4px;background:var(--c);box-shadow:inset 0 0 0 1.5px var(--bd);margin-top:6px;flex-shrink:0}
+.card .when{color:var(--muted);margin:0 0 12px 26px}
+.card dl{display:grid;grid-template-columns:120px 1fr;gap:8px 12px;margin:0}
+.card dt{color:var(--muted)}
+.card dd{margin:0}
+.badge{display:inline-block;padding:2px 10px;border-radius:12px;background:var(--c);color:var(--fg);box-shadow:inset 0 0 0 1px var(--bd);font-size:12px;font-weight:500}
+.card.list .row{display:block;margin-bottom:2px}
+
+@media (max-width:860px){
+  aside{display:none}
+  .wrap{padding:0 6px 6px}
+  #search{width:130px}
+  .logo{min-width:0}.logo span{display:none}
+  .dows,.week{grid-template-columns:repeat(7,1fr)}
+  .wk,.dows div:first-child{display:none}
+  .chip .tm{display:none}
+}
+#tip{position:fixed;z-index:30;display:none;pointer-events:none;max-width:320px;background:var(--surface);color:var(--text);border:1px solid var(--line);border-left:5px solid var(--bd,var(--accent));border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.25);padding:10px 12px;font-size:12.5px;line-height:1.45}
+#tip b{font-size:14px;font-weight:500;display:block;margin-bottom:2px}
+#tip .when{color:var(--muted);margin-bottom:6px}
+#tip div.r{display:flex;gap:8px}#tip div.r span:first-child{color:var(--muted);min-width:92px;flex-shrink:0}
+@media (hover:none){#tip{display:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><div class="tile" id="logoDay">11</div><span>Events &amp; Affairs</span></div>
+  <button class="pill" id="today">Today</button>
+  <button class="icon" id="prev" aria-label="Previous">‹</button>
+  <button class="icon" id="next" aria-label="Next">›</button>
+  <h1 id="title" style="font-weight:400"></h1>
+  <div class="spacer"></div>
+  <div id="status"><i></i><span>Loading…</span></div>
+  <input id="search" type="search" placeholder="Search events">
+  <div class="seg"><button id="vMonth" class="on">Month</button><button id="vAgenda">Agenda</button></div>
+  <button class="icon" id="refresh" title="Refresh now" aria-label="Refresh">⟳</button>
+</header>
+
+<div class="wrap">
+  <aside>
+    <div class="mini-head"><span id="miniTitle"></span>
+      <span><button class="icon" id="mPrev" style="width:28px;height:28px">‹</button><button class="icon" id="mNext" style="width:28px;height:28px">›</button></span></div>
+    <div class="mini" id="mini"></div>
+    <h4>Status</h4>
+    <div id="filters"></div>
+  </aside>
+  <main id="main"></main>
+</div>
+
+<div id="tip"></div>
+<div id="scrim"><div class="card" id="card"></div></div>
+
+<script>
+/* ============ CONFIG ============ */
+const CFG = {
+  sheetId:   '1cGr9LnmuzJ5lw76BkiPhKb1ab5tDfQboH1r76SGF6bU',
+  sheetName: 'Events and Other Affairs',
+  refreshSeconds: 30,       // how often the page re-reads the sheet
+  weekStartsOn: 1           // 1 = Monday (as in your Google Calendar), 0 = Sunday
+};
+/* ================================== */
+
+const STATUS = {   // palette: 891446 (urgent), 512887 (semi-urgent), 062A79 (not urgent); no status = plain text
+  'Urgent':      {c:'#891446', fg:'#ffffff', bd:'#640d33', order:0, bold:true},
+  'Semi-urgent': {c:'#512887', fg:'#ffffff', bd:'#3a1c63', order:1},
+  'Not urgent':  {c:'#062A79', fg:'#ffffff', bd:'#041d57', order:2},
+  'No status':   {c:'transparent', fg:'var(--text)', bd:'#9aa0a6', order:3, plain:true}
+};
+const sv=st=>{const o=STATUS[st.status||st]; return `--c:${o.c};--fg:${o.fg};--bd:${o.bd}`;};
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DOW=['SUN','MON','TUE','WED','THU','FRI','SAT'];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const key=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const today0=()=>{const d=new Date();return new Date(d.getFullYear(),d.getMonth(),d.getDate())};
+
+let events=[], byDay={}, view='month', cursor=today0(), selected=today0();
+let hidden=new Set(), query='';
+try{ if(localStorage.getItem('cal.view')==='agenda') view='agenda'; }catch(e){}
+
+/* ---------- CSV + parsing ---------- */
+function parseCSV(t){
+  const rows=[];let r=[],f='',q=false;
+  for(let i=0;i<t.length;i++){
+    const c=t[i];
+    if(q){ if(c==='"'){ if(t[i+1]==='"'){f+='"';i++} else q=false } else f+=c }
+    else if(c==='"') q=true;
+    else if(c===','){r.push(f);f=''}
+    else if(c==='\n'){r.push(f);rows.push(r);r=[];f=''}
+    else if(c!=='\r') f+=c;
+  }
+  if(f!==''||r.length){r.push(f);rows.push(r)}
+  return rows;
+}
+function parseDate(s){
+  s=(s||'').trim(); if(!s) return null;
+  let m=s.match(/^([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})/);
+  if(m){const mi=MONTHS.findIndex(x=>x.slice(0,3).toLowerCase()===m[1].toLowerCase()); if(mi>=0) return new Date(+m[3],mi,+m[2]);}
+  m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);          // M/D/YYYY
+  if(m) return new Date(+m[3],+m[1]-1,+m[2]);
+  m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return new Date(+m[1],+m[2]-1,+m[3]);
+  return null;
+}
+function parseTime(subject){
+  // pulls "(9AM to 12NN)" / "(4PM)" out of the subject
+  const m=subject.match(/\s*\(\s*(\d{1,2}(?::\d{2})?\s*(?:AM|PM|NN)(?:\s*(?:to|-|–)\s*\d{1,2}(?::\d{2})?\s*(?:AM|PM|NN))?)\s*\)/i);
+  if(!m) return {title:subject.trim(),time:'',sort:9999};
+  const first=m[1].match(/(\d{1,2})(?::(\d{2}))?\s*(AM|PM|NN)/i);
+  let h=+first[1], mi=+(first[2]||0), ap=first[3].toUpperCase();
+  if(ap==='NN') h=12; else if(ap==='PM'&&h<12) h+=12; else if(ap==='AM'&&h===12) h=0;
+  return {title:subject.replace(m[0],'').replace(/\s+,/,',').replace(/\s{2,}/g,' ').trim(),
+          time:m[1].replace(/\s*to\s*/i,'–').replace(/\s+/g,''), sort:h*60+mi};
+}
+function rowsToEvents(rows){
+  // Columns are found by header name (so reordering columns in the sheet is safe).
+  // Fallback layout: A=Done, B=Date Received, C=Ref No, D=Event Date, E=From/Subject,
+  // F=Action Needed, G=Venue, H=Status, I=Last Activity, J=Last Reminder, K=Last Contact
+  const C={done:0,received:1,ref:2,date:3,subject:4,action:5,venue:6,status:7,activity:8,reminder:9,contact:10};
+  const names={received:'date received',ref:'ref',date:'event date',subject:'from',action:'action needed',venue:'venue',status:'status',activity:'last activity',reminder:'last reminder',contact:'last contact'};
+  const hi=rows.slice(0,8).findIndex(r=>r.some(c=>/event date/i.test(c))&&r.some(c=>/status/i.test(c)));
+  if(hi>=0){
+    const h=rows[hi].map(c=>(c||'').trim().toLowerCase());
+    for(const k in names){ const i=h.findIndex(c=>c.includes(names[k])); if(i>=0) C[k]=i; }
+  }
+  const out=[];
+  for(const r of rows){
+    const date=parseDate(r[C.date]); const subj=(r[C.subject]||'').trim();
+    if(!date||!subj) continue;
+    const t=parseTime(subj);
+    const st=STATUS[(r[C.status]||'').trim()]?(r[C.status]).trim():'No status';
+    out.push({
+      date, day:key(date), title:t.title, time:t.time, sort:t.sort,
+      done:/^true$/i.test((r[C.done]||'').trim()),
+      received:r[C.received]||'', reminder:r[C.reminder]||'', ref:r[C.ref]||'',
+      action:r[C.action]||'', venue:r[C.venue]||'', status:st, lastTx:r[C.activity]||'', lastContact:r[C.contact]||''
+    });
+  }
+  out.sort((a,b)=>a.date-b.date||a.sort-b.sort||a.ref.localeCompare(b.ref));
+  return out;
+}
+
+/* ---------- load / auto-refresh ---------- */
+let lastSig='';
+async function load(manual){
+  const url=`https://docs.google.com/spreadsheets/d/${CFG.sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(CFG.sheetName)}&_=${Date.now()}`;
+  try{
+    const res=await fetch(url,{cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const text=await res.text();
+    if(/^\s*<(!DOCTYPE|html)/i.test(text)) throw new Error('Sheet is not shared publicly');
+    const ev=rowsToEvents(parseCSV(text));
+    const sig=JSON.stringify(ev.map(e=>[e.day,e.title,e.time,e.status,e.done,e.action,e.venue,e.ref,e.lastTx,e.lastContact]));
+    setStatus(false,'Updated '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}));
+    if(sig!==lastSig){ lastSig=sig; events=ev; indexEvents(); renderAll(); }
+  }catch(err){
+    setStatus(true,'Can’t read sheet — set sharing to “Anyone with the link: Viewer”');
+    console.error(err);
+  }
+}
+function setStatus(err,msg){ const s=$('status'); s.className=err?'err':''; s.lastElementChild.textContent=msg; }
+
+/* ---------- helpers ---------- */
+function visible(e){
+  if(hidden.has(e.status)) return false;
+  if(query){ const q=query.toLowerCase(); return (e.title+' '+e.venue+' '+e.action+' '+e.ref+' '+e.status).toLowerCase().includes(q); }
+  return true;
+}
+function indexEvents(){ byDay={}; for(const e of events) (byDay[e.day]??=[]).push(e); }
+const dayEvents=k=>(byDay[k]||[]).filter(visible);
+function gridStart(d){ const f=new Date(d.getFullYear(),d.getMonth(),1); const diff=(f.getDay()-CFG.weekStartsOn+7)%7; return new Date(f.getFullYear(),f.getMonth(),1-diff); }
+function isoWeek(d){ const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())); const n=t.getUTCDay()||7; t.setUTCDate(t.getUTCDate()+4-n); const y=new Date(Date.UTC(t.getUTCFullYear(),0,1)); return Math.ceil(((t-y)/864e5+1)/7); }
+const dowLabels=()=>Array.from({length:7},(_,i)=>DOW[(i+CFG.weekStartsOn)%7]);
+const colorOf=e=>STATUS[e.status].c;
+
+/* ---------- renderers ---------- */
+function chipHTML(e){
+  const cls=['chip',e.time?'dot':'block',e.done?'done':'',STATUS[e.status].bold?'bold':'',STATUS[e.status].plain?'plain':''].join(' ');
+  return `<button class="${cls}" style="${sv(e)}" data-ref="${esc(e.ref)}" data-day="${e.day}" data-t="${esc(e.title)}">
+    ${e.time?`<span class="tm">${esc(e.time)}</span>`:''}<span class="t">${esc(e.title)}</span></button>`;
+}
+function renderMonth(){
+  const start=gridStart(cursor), m=cursor.getMonth();
+  const weeksN=Math.ceil(((new Date(cursor.getFullYear(),m+1,0)).getDate()+((new Date(cursor.getFullYear(),m,1).getDay()-CFG.weekStartsOn+7)%7))/7);
+  const tk=key(today0()); const MAXV=999;
+  let h=`<div class="dows"><div></div>${dowLabels().map(d=>`<div>${d}</div>`).join('')}</div><div class="weeks" style="grid-template-rows:repeat(${weeksN},minmax(112px,auto))">`;
+  for(let w=0;w<weeksN;w++){
+    const ws=new Date(start.getFullYear(),start.getMonth(),start.getDate()+w*7);
+    h+=`<div class="week"><div class="wk">${isoWeek(new Date(ws.getFullYear(),ws.getMonth(),ws.getDate()+ (CFG.weekStartsOn===1?0:1)))}</div>`;
+    for(let i=0;i<7;i++){
+      const d=new Date(ws.getFullYear(),ws.getMonth(),ws.getDate()+i), k=key(d), evs=dayEvents(k);
+      const label=d.getDate()===1?`${MONTHS[d.getMonth()].slice(0,3)} 1`:d.getDate();
+      h+=`<div class="cell ${d.getMonth()!==m?'other':''} ${k===tk?'today':''}" data-day="${k}">
+        <div class="num">${label}</div>
+        ${evs.slice(0,MAXV).map(chipHTML).join('')}
+        ${evs.length>MAXV?`<button class="more" data-more="${k}">${evs.length-MAXV} more</button>`:''}</div>`;
+    }
+    h+='</div>';
+  }
+  $('main').innerHTML=h+'</div>';
+}
+function renderAgenda(){
+  const y=cursor.getFullYear(), m=cursor.getMonth(), tk=key(today0());
+  const list=events.filter(e=>e.date.getFullYear()===y&&e.date.getMonth()===m&&visible(e));
+  if(!list.length){ $('main').innerHTML=`<div class="empty">No events in ${MONTHS[m]} ${y}.</div>`; return; }
+  const days={}; list.forEach(e=>(days[e.day]??=[]).push(e));
+  $('main').innerHTML='<div class="agenda">'+Object.keys(days).sort().map(k=>{
+    const d=days[k][0].date;
+    return `<div class="ag-day"><div class="ag-date ${k===tk?'today':''}"><b>${d.getDate()}</b><small>${MONTHS[d.getMonth()].slice(0,3)}<br>${DOW[d.getDay()]}</small></div>
+      <div class="ag-items">${days[k].map(e=>`<button class="ag-row ${e.done?'done':''}" style="${sv(e)}" data-ref="${esc(e.ref)}" data-day="${e.day}" data-t="${esc(e.title)}">
+        <span class="dotc"></span><span class="tm">${esc(e.time||'All day')}</span>
+        <span class="ttl">${esc(e.title)}${e.action?` <span class="sub">· ${esc(e.action)}</span>`:''}</span>
+        <span class="sub">${esc(e.venue)}</span></button>`).join('')}</div></div>`;
+  }).join('')+'</div>';
+}
+function renderMini(){
+  const y=cursor.getFullYear(), m=cursor.getMonth(), start=gridStart(cursor), tk=key(today0()), sk=key(selected);
+  $('miniTitle').textContent=`${MONTHS[m]} ${y}`;
+  let h=dowLabels().map(d=>`<div class="dow">${d[0]}</div>`).join('');
+  for(let i=0;i<42;i++){
+    const d=new Date(start.getFullYear(),start.getMonth(),start.getDate()+i), k=key(d);
+    if(i>=35&&d.getMonth()!==m) break;
+    h+=`<button class="d ${d.getMonth()!==m?'other':''} ${k===tk?'today':''} ${k===sk&&k!==tk?'sel':''} ${dayEvents(k).length?'has':''}" data-go="${k}">${d.getDate()}</button>`;
+  }
+  $('mini').innerHTML=h;
+}
+function renderFilters(){
+  const counts={}; events.forEach(e=>counts[e.status]=(counts[e.status]||0)+1);
+  $('filters').innerHTML=Object.keys(STATUS).map(s=>`<label class="filter" style="${sv(s)}">
+    <input type="checkbox" data-status="${s}" ${hidden.has(s)?'':'checked'}>${s}<span class="count">${counts[s]||0}</span></label>`).join('');
+}
+function renderAll(){
+  $('title').textContent=`${MONTHS[cursor.getMonth()]} ${cursor.getFullYear()}`;
+  $('logoDay').textContent=new Date().getDate();
+  $('vMonth').classList.toggle('on',view==='month'); $('vAgenda').classList.toggle('on',view==='agenda');
+  view==='month'?renderMonth():renderAgenda(); renderMini(); renderFilters();
+}
+
+/* ---------- popovers ---------- */
+function fmtDay(d){ return `${DOW[d.getDay()][0]+DOW[d.getDay()].slice(1).toLowerCase()}, ${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`; }
+function openEvent(day,ref,title){
+  const e=(byDay[day]||[]).find(x=>x.ref===ref&&x.title===title)||(byDay[day]||[]).find(x=>x.ref===ref); if(!e) return;
+  const rows=[['Time',e.time||'All day'],['Venue',e.venue],['Action needed',e.action],['Status',e.status?`<span class="badge" style="${sv(e)}">${esc(e.status)}</span>`:''],
+    ['Ref. no.',e.ref],['Received',e.received],['Last activity',e.lastTx],['Last reminder',e.reminder],['Last contact',e.lastContact],['Done',e.done?'Yes':'No']]
+    .filter(r=>r[1]);
+  $('card').className='card';
+  $('card').innerHTML=`<div class="bar"><button class="icon" data-close>✕</button></div>
+    <h2 style="${sv(e)}"><i></i><span>${esc(e.title)}</span></h2><p class="when">${fmtDay(e.date)}</p>
+    <dl>${rows.map(r=>`<dt>${r[0]}</dt><dd>${r[0]==='Status'?r[1]:esc(r[1])}</dd>`).join('')}</dl>`;
+  $('scrim').classList.add('on');
+}
+function openDay(k){
+  const evs=dayEvents(k); const d=new Date(k+'T00:00:00');
+  $('card').className='card list';
+  $('card').innerHTML=`<div class="bar"><button class="icon" data-close>✕</button></div><h2><span>${fmtDay(d)}</span></h2><p class="when" style="margin-left:0">${evs.length} event${evs.length===1?'':'s'}</p>`+
+    evs.map(e=>`<button class="ag-row ${e.done?'done':''} row" style="${sv(e)}" data-ref="${esc(e.ref)}" data-day="${e.day}" data-t="${esc(e.title)}"><span class="dotc"></span><span class="tm" style="width:auto;margin-right:6px">${esc(e.time||'')}</span><span class="ttl">${esc(e.title)}</span></button>`).join('');
+  $('scrim').classList.add('on');
+}
+const closeCard=()=>$('scrim').classList.remove('on');
+
+/* ---------- events ---------- */
+function shift(n){
+  if(n===0){ cursor=today0(); selected=today0(); }
+  else cursor=new Date(cursor.getFullYear(),cursor.getMonth()+n,1);
+  renderAll();
+}
+$('today').onclick=()=>shift(0);
+$('prev').onclick=$('mPrev').onclick=()=>shift(-1);
+$('next').onclick=$('mNext').onclick=()=>shift(1);
+$('refresh').onclick=()=>load(true);
+$('vMonth').onclick=()=>{view='month';try{localStorage.setItem('cal.view','month')}catch(e){}renderAll()};
+$('vAgenda').onclick=()=>{view='agenda';try{localStorage.setItem('cal.view','agenda')}catch(e){}renderAll()};
+$('search').oninput=e=>{query=e.target.value.trim();renderAll()};
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeCard(); });
+document.addEventListener('click',e=>{
+  const t=e.target;
+  if(t.id==='scrim'||t.closest('[data-close]')) return closeCard();
+  const chip=t.closest('[data-ref]'); if(chip&&chip.dataset.day) { e.stopPropagation(); return openEvent(chip.dataset.day,chip.dataset.ref,chip.dataset.t); }
+  const more=t.closest('[data-more]'); if(more) return openDay(more.dataset.more);
+  const go=t.closest('[data-go]'); if(go){ const d=new Date(go.dataset.go+'T00:00:00'); selected=d; cursor=new Date(d.getFullYear(),d.getMonth(),1); return renderAll(); }
+  const cell=t.closest('.cell'); if(cell){ selected=new Date(cell.dataset.day+'T00:00:00'); renderMini(); if(dayEvents(cell.dataset.day).length) openDay(cell.dataset.day); }
+});
+document.addEventListener('change',e=>{
+  const s=e.target.dataset.status; if(!s) return;
+  e.target.checked?hidden.delete(s):hidden.add(s); renderAll();
+});
+window.addEventListener('resize',()=>{ if(view==='month') renderMonth(); });
+
+
+/* ---------- hover tooltip ---------- */
+const tip=$('tip');
+function findEv(el){ const d=el.dataset; return (byDay[d.day]||[]).find(x=>x.ref===d.ref&&x.title===d.t)||(byDay[d.day]||[]).find(x=>x.ref===d.ref); }
+function showTip(el,ev){
+  const e=findEv(el); if(!e) return;
+  const rows=[['Time',e.time||'All day'],['Venue',e.venue],['Action needed',e.action],['Status',e.status],['Ref. no.',e.ref],['Received',e.received],['Last activity',e.lastTx],['Last reminder',e.reminder],['Last contact',e.lastContact],['Done',e.done?'Yes':'No']].filter(r=>r[1]);
+  tip.style.cssText+=';'+sv(e);
+  tip.innerHTML=`<b>${esc(e.title)}</b><div class="when">${fmtDay(e.date)}</div>`+rows.map(r=>`<div class="r"><span>${r[0]}</span><span>${esc(r[1])}</span></div>`).join('');
+  tip.style.display='block'; moveTip(ev);
+}
+function moveTip(ev){
+  const w=tip.offsetWidth,h=tip.offsetHeight; let x=ev.clientX+14,y=ev.clientY+14;
+  if(x+w>innerWidth-8) x=ev.clientX-w-14; if(y+h>innerHeight-8) y=innerHeight-h-8; if(x<8)x=8; if(y<8)y=8;
+  tip.style.left=x+'px'; tip.style.top=y+'px';
+}
+document.addEventListener('mouseover',e=>{ const el=e.target.closest('[data-ref][data-day]'); if(el) showTip(el,e); });
+document.addEventListener('mousemove',e=>{ if(tip.style.display==='block') moveTip(e); });
+document.addEventListener('mouseout',e=>{ if(e.target.closest('[data-ref][data-day]')) tip.style.display='none'; });
+document.addEventListener('click',()=>{ tip.style.display='none'; },true);
+
+/* ---------- go ---------- */
+renderAll();
+load();
+setInterval(load,CFG.refreshSeconds*1000);
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) load(); });
+</script>
+</body>
+</html>
